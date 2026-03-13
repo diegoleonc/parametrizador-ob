@@ -1,40 +1,33 @@
 import { useState, useMemo, useEffect } from 'react'
-import { Zap, ClipboardList, Target, TrendingUp, CheckSquare, Download, AlertTriangle, Copy, CheckCircle, Search, Send, Loader2, ExternalLink, XCircle, FolderOpen, FileText } from 'lucide-react'
+import { ClipboardList, Target, TrendingUp, CheckSquare, Download, AlertTriangle, Copy, CheckCircle, Send, Loader2, ExternalLink, XCircle, FolderOpen, FileText, ArrowRight, RotateCcw } from 'lucide-react'
 import { parseProjectName, calculateEstimation, generateTasks, formatDate, getNextMonday } from './utils/parsing'
-import { fetchPortfolioProjects, searchProjects, sendTasksToAsana } from './utils/asanaApi'
+import { fetchPortfolioProjects, sendTasksToAsana } from './utils/asanaApi'
 
 const PROJECT_TYPES = [
-  { value: 'setup', label: '01 Set Up', description: 'Onboarding inicial de nuevos clientes', icon: '🚀', color: 'from-blue-500 to-blue-700', bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-700' },
-  { value: 'upgrade', label: '02 Upgrade', description: 'Ampliación de canales o plan', icon: '⬆️', color: 'from-amber-500 to-orange-600', bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-700' },
-  { value: 'reonboarding', label: '03 Reonboarding', description: 'Reactivación de clientes existentes', icon: '🔄', color: 'from-violet-500 to-purple-700', bg: 'bg-violet-50', border: 'border-violet-200', text: 'text-violet-700' },
+  { value: 'setup', label: 'Set Up', tag: '01', description: 'Onboarding inicial de nuevos clientes', gradient: 'from-mv-green to-emerald-600', bg: 'bg-mv-green/10', border: 'border-mv-green/30', text: 'text-mv-green', ring: 'ring-mv-green/30' },
+  { value: 'upgrade', label: 'Upgrade', tag: '02', description: 'Ampliación de canales o plan', gradient: 'from-mv-orange to-amber-600', bg: 'bg-mv-orange/10', border: 'border-mv-orange/30', text: 'text-mv-orange', ring: 'ring-mv-orange/30' },
+  { value: 'reonboarding', label: 'Reonboarding', tag: '03', description: 'Reactivación de clientes existentes', gradient: 'from-mv-magenta to-pink-600', bg: 'bg-mv-magenta/10', border: 'border-mv-magenta/30', text: 'text-mv-magenta', ring: 'ring-mv-magenta/30' },
 ]
 
 const ESTIMATE_OPTIONS = [
-  { value: 'optimista', label: 'Optimista (P50)', color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-200' },
-  { value: 'esperado', label: 'Esperado (Recomendado)', color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-200' },
-  { value: 'conservador', label: 'Conservador (P80)', color: 'text-red-600', bg: 'bg-red-50', border: 'border-red-200' },
+  { value: 'optimista', label: 'Optimista', sublabel: 'P50', color: 'text-mv-green', bg: 'bg-mv-green/8', border: 'border-mv-green/20', ring: 'ring-mv-green/20', dot: 'bg-mv-green' },
+  { value: 'esperado', label: 'Esperado', sublabel: 'Recomendado', color: 'text-mv-blue', bg: 'bg-mv-blue/8', border: 'border-mv-blue/20', ring: 'ring-mv-blue/20', dot: 'bg-mv-blue' },
+  { value: 'conservador', label: 'Conservador', sublabel: 'P80', color: 'text-mv-coral', bg: 'bg-mv-coral/8', border: 'border-mv-coral/20', ring: 'ring-mv-coral/20', dot: 'bg-mv-coral' },
 ]
 
 export default function Parametrizador() {
-  // Step 1: Type selector
   const [selectedType, setSelectedType] = useState(null)
-
-  // Step 2: Project selector
   const [portfolioProjects, setPortfolioProjects] = useState([])
   const [loadingProjects, setLoadingProjects] = useState(false)
   const [projectsError, setProjectsError] = useState('')
   const [portfolioStats, setPortfolioStats] = useState(null)
   const [selectedAsanaProject, setSelectedAsanaProject] = useState(null)
-
-  // Step 3: Parametrization
   const [startDate, setStartDate] = useState(formatDate(getNextMonday(new Date())))
   const [estimateType, setEstimateType] = useState('esperado')
   const [showResults, setShowResults] = useState(false)
   const [parsed, setParsed] = useState(null)
   const [estimations, setEstimations] = useState(null)
   const [copied, setCopied] = useState(false)
-
-  // Asana send state
   const [sendingToAsana, setSendingToAsana] = useState(false)
   const [sendProgress, setSendProgress] = useState({ current: 0, total: 0, message: '' })
   const [sendResult, setSendResult] = useState(null)
@@ -44,7 +37,6 @@ export default function Parametrizador() {
     return generateTasks(parsed, estimations[estimateType], startDate)
   }, [parsed, estimations, estimateType, startDate])
 
-  // Fetch projects when type is selected
   useEffect(() => {
     if (!selectedType) return
     setLoadingProjects(true)
@@ -65,11 +57,9 @@ export default function Parametrizador() {
       .finally(() => setLoadingProjects(false))
   }, [selectedType])
 
-  // Auto-parametrize when project is selected
   const handleSelectProject = (project) => {
     setSelectedAsanaProject(project)
     setSendResult(null)
-
     const p = parseProjectName(project.name)
     const e = calculateEstimation(p.plan, p.type, p.totalChannels, p.channels)
     setParsed(p)
@@ -107,11 +97,9 @@ export default function Parametrizador() {
     setSendingToAsana(true)
     setSendResult(null)
     setSendProgress({ current: 0, total: 0, message: 'Iniciando...' })
-
     try {
       const result = await sendTasksToAsana(
-        selectedAsanaProject.gid,
-        tasks,
+        selectedAsanaProject.gid, tasks,
         (current, total, message) => setSendProgress({ current, total, message })
       )
       setSendResult(result)
@@ -137,47 +125,73 @@ export default function Parametrizador() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-blue-700 to-indigo-800 rounded-2xl p-8 text-white">
-        <div className="flex items-center justify-between">
+      {/* Hero header */}
+      <div className="relative overflow-hidden bg-mv-navy rounded-2xl p-8 md:p-10">
+        <div className="absolute inset-0 opacity-[0.07]" style={{
+          backgroundImage: 'radial-gradient(circle at 20% 50%, #54CC85 0%, transparent 50%), radial-gradient(circle at 80% 50%, #6681C6 0%, transparent 50%)',
+        }} />
+        <div className="relative flex items-center justify-between">
           <div>
-            <div className="flex items-center gap-3 mb-2">
-              <Zap size={28} />
-              <h1 className="text-2xl font-bold">Parametrizador de Onboarding</h1>
-            </div>
-            <p className="text-blue-200">Generador de tareas para Asana basado en el análisis de 1,035 proyectos completados</p>
+            <h1 className="font-display text-3xl md:text-4xl font-bold text-white tracking-tight mb-2">
+              Parametrizador
+            </h1>
+            <p className="text-mv-blue-light/80 text-sm max-w-md">
+              Generador automático de tareas para proyectos de onboarding. Basado en el análisis de 1,035 proyectos completados.
+            </p>
           </div>
           {selectedType && (
             <button
               onClick={handleReset}
-              className="text-sm text-blue-200 hover:text-white border border-blue-400 hover:border-white px-4 py-2 rounded-lg transition-all"
+              className="text-sm text-white/60 hover:text-white border border-white/20 hover:border-white/40 px-4 py-2 rounded-lg transition-all flex items-center gap-2"
             >
-              Reiniciar
+              <RotateCcw size={14} />
+              <span className="hidden sm:inline">Reiniciar</span>
             </button>
           )}
         </div>
+
+        {/* Step progress */}
+        {selectedType && (
+          <div className="relative mt-6 flex items-center gap-2">
+            <StepDot active={true} label="Tipo" />
+            <StepLine active={!!selectedAsanaProject} />
+            <StepDot active={!!selectedAsanaProject} label="Proyecto" />
+            <StepLine active={showResults} />
+            <StepDot active={showResults} label="Tareas" />
+            <StepLine active={!!sendResult} />
+            <StepDot active={!!sendResult} label="Asana" />
+          </div>
+        )}
       </div>
 
       {/* Step 1: Type selector */}
-      <Card icon={<FolderOpen size={20} />} title="Paso 1: Tipo de proyecto" step={1}>
+      <Card icon={<FolderOpen size={18} />} title="Tipo de proyecto" step={1}>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {PROJECT_TYPES.map(type => (
             <button
               key={type.value}
               onClick={() => setSelectedType(type.value)}
-              className={`relative p-6 rounded-xl border-2 text-left transition-all hover:shadow-md ${
+              className={`group relative p-6 rounded-xl border-2 text-left transition-all duration-200 hover:shadow-lg ${
                 selectedType === type.value
-                  ? `${type.bg} ${type.border} ring-2 ring-offset-1 ${type.border.replace('border', 'ring')}`
-                  : 'border-slate-200 hover:border-slate-300'
+                  ? `${type.bg} ${type.border} ring-2 ${type.ring}`
+                  : 'border-slate-200 hover:border-slate-300 hover:shadow-mv-navy/5'
               }`}
             >
-              <div className="text-3xl mb-3">{type.icon}</div>
-              <div className={`text-base font-bold ${selectedType === type.value ? type.text : 'text-slate-800'}`}>
+              <div className={`inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-bold mb-3 ${
+                selectedType === type.value
+                  ? `bg-gradient-to-r ${type.gradient} text-white`
+                  : 'bg-mv-navy/8 text-mv-navy/60'
+              }`}>
+                {type.tag}
+              </div>
+              <div className={`text-lg font-semibold mb-1 ${
+                selectedType === type.value ? type.text : 'text-mv-navy'
+              }`}>
                 {type.label}
               </div>
-              <div className="text-xs text-slate-500 mt-1">{type.description}</div>
+              <div className="text-xs text-mv-navy/50">{type.description}</div>
               {selectedType === type.value && (
-                <CheckCircle size={18} className={`absolute top-3 right-3 ${type.text}`} />
+                <CheckCircle size={18} className={`absolute top-4 right-4 ${type.text}`} />
               )}
             </button>
           ))}
@@ -186,213 +200,226 @@ export default function Parametrizador() {
 
       {/* Step 2: Project selector */}
       {selectedType && (
-        <Card icon={<FileText size={20} />} title="Paso 2: Seleccionar proyecto sin parametrizar" step={2}>
-          {loadingProjects ? (
-            <div className="flex flex-col items-center justify-center py-12 gap-3">
-              <Loader2 size={28} className="animate-spin text-blue-600" />
-              <p className="text-sm text-slate-500">Buscando proyectos sin parametrizar en <strong>{activeType?.label}</strong>...</p>
-              <p className="text-xs text-slate-400">Verificando tareas en cada proyecto del portfolio</p>
-            </div>
-          ) : projectsError ? (
-            <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-center gap-3">
-              <XCircle size={18} className="text-red-500 shrink-0" />
-              <p className="text-sm text-red-700">{projectsError}</p>
-            </div>
-          ) : (
-            <>
-              {/* Stats bar */}
-              {portfolioStats && (
-                <div className={`${activeType?.bg} border ${activeType?.border} rounded-xl p-4 mb-5 flex items-center justify-between`}>
-                  <div className="flex items-center gap-4">
-                    <div>
-                      <span className={`text-2xl font-bold ${activeType?.text}`}>{portfolioStats.unparametrized}</span>
-                      <span className="text-sm text-slate-500 ml-1">sin parametrizar</span>
+        <div className="fade-in">
+          <Card icon={<FileText size={18} />} title="Proyecto sin parametrizar" step={2}>
+            {loadingProjects ? (
+              <div className="flex flex-col items-center justify-center py-16 gap-4">
+                <div className="relative">
+                  <div className="w-12 h-12 rounded-full border-3 border-mv-navy/10 border-t-mv-green animate-spin" style={{ borderWidth: '3px' }} />
+                </div>
+                <div className="text-center">
+                  <p className="text-sm font-medium text-mv-navy/70">Escaneando portfolio <span className={activeType?.text}>{activeType?.label}</span></p>
+                  <p className="text-xs text-mv-navy/40 mt-1">Verificando tareas en cada proyecto...</p>
+                </div>
+              </div>
+            ) : projectsError ? (
+              <div className="bg-mv-coral/8 border border-mv-coral/20 rounded-xl p-4 flex items-center gap-3">
+                <XCircle size={18} className="text-mv-coral shrink-0" />
+                <p className="text-sm text-mv-coral">{projectsError}</p>
+              </div>
+            ) : (
+              <>
+                {portfolioStats && (
+                  <div className="flex items-center gap-3 mb-5">
+                    <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg ${activeType?.bg} ${activeType?.border} border`}>
+                      <span className={`text-xl font-bold ${activeType?.text}`}>{portfolioStats.unparametrized}</span>
+                      <span className="text-xs text-mv-navy/50">pendientes</span>
                     </div>
-                    <div className="h-8 w-px bg-slate-300" />
-                    <div>
-                      <span className="text-sm text-slate-500">{portfolioStats.active} activos de {portfolioStats.total} totales</span>
-                    </div>
+                    <span className="text-xs text-mv-navy/30">de {portfolioStats.active} activos ({portfolioStats.total} totales)</span>
                   </div>
-                </div>
-              )}
+                )}
 
-              {portfolioProjects.length === 0 ? (
-                <div className="text-center py-8 text-slate-400">
-                  <CheckCircle size={40} className="mx-auto mb-3 text-emerald-400" />
-                  <p className="font-medium text-slate-600">Todos los proyectos están parametrizados</p>
-                  <p className="text-sm mt-1">No hay proyectos pendientes en {activeType?.label}</p>
-                </div>
-              ) : (
-                <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
-                  {portfolioProjects.map(p => (
-                    <button
-                      key={p.gid}
-                      onClick={() => handleSelectProject(p)}
-                      className={`w-full text-left px-4 py-3.5 rounded-xl border-2 transition-all flex items-center justify-between gap-3 ${
-                        selectedAsanaProject?.gid === p.gid
-                          ? `border-blue-500 bg-blue-50 ring-2 ring-blue-200`
-                          : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
-                      }`}
-                    >
-                      <span className="text-sm font-medium text-slate-700 truncate">{p.name}</span>
-                      <div className="flex items-center gap-2 shrink-0">
-                        {selectedAsanaProject?.gid === p.gid && (
-                          <CheckCircle size={18} className="text-blue-600" />
-                        )}
-                        <a
-                          href={p.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          onClick={(e) => e.stopPropagation()}
-                          className="text-slate-400 hover:text-blue-600"
-                        >
-                          <ExternalLink size={14} />
-                        </a>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </>
-          )}
-        </Card>
+                {portfolioProjects.length === 0 ? (
+                  <div className="text-center py-12">
+                    <div className="w-14 h-14 mx-auto mb-4 rounded-full bg-mv-green/10 flex items-center justify-center">
+                      <CheckCircle size={28} className="text-mv-green" />
+                    </div>
+                    <p className="font-semibold text-mv-navy">Todo al día</p>
+                    <p className="text-sm text-mv-navy/40 mt-1">No hay proyectos pendientes en {activeType?.label}</p>
+                  </div>
+                ) : (
+                  <div className="space-y-1.5 max-h-80 overflow-y-auto pr-1">
+                    {portfolioProjects.map(p => (
+                      <button
+                        key={p.gid}
+                        onClick={() => handleSelectProject(p)}
+                        className={`w-full text-left px-4 py-3 rounded-xl border transition-all duration-150 flex items-center justify-between gap-3 group ${
+                          selectedAsanaProject?.gid === p.gid
+                            ? 'border-mv-navy bg-mv-navy/5 shadow-sm'
+                            : 'border-transparent hover:bg-mv-navy/3 hover:border-mv-navy/10'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className={`w-2 h-2 rounded-full shrink-0 transition-colors ${
+                            selectedAsanaProject?.gid === p.gid ? 'bg-mv-green' : 'bg-mv-navy/15 group-hover:bg-mv-navy/30'
+                          }`} />
+                          <span className="text-sm text-mv-navy truncate">{p.name}</span>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          {selectedAsanaProject?.gid === p.gid && (
+                            <ArrowRight size={14} className="text-mv-navy" />
+                          )}
+                          <a
+                            href={p.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="text-mv-navy/20 hover:text-mv-blue transition-colors"
+                          >
+                            <ExternalLink size={13} />
+                          </a>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </Card>
+        </div>
       )}
 
-      {/* Step 3: Date + Estimation config */}
       {showResults && parsed && estimations && (
         <>
           {/* Summary */}
-          <Card icon={<Target size={20} />} title="Paso 3: Resumen detectado" step={3}>
-            {parsed.parseWarnings.length > 0 && (
-              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4 flex items-center gap-3">
-                <AlertTriangle size={18} className="text-amber-500 shrink-0" />
-                <p className="text-sm text-amber-700">{parsed.parseWarnings.join(' | ')}</p>
+          <div className="slide-up">
+            <Card icon={<Target size={18} />} title="Resumen detectado" step={3}>
+              {parsed.parseWarnings.length > 0 && (
+                <div className="bg-mv-yellow/10 border border-mv-yellow/30 rounded-xl p-4 mb-5 flex items-center gap-3">
+                  <AlertTriangle size={16} className="text-mv-orange shrink-0" />
+                  <p className="text-sm text-mv-navy/70">{parsed.parseWarnings.join(' | ')}</p>
+                </div>
+              )}
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-5">
+                <SummaryPill label="Empresa" value={parsed.company || '-'} />
+                <SummaryPill label="País" value={parsed.country || '-'} />
+                <SummaryPill label="Plan" value={parsed.plan} />
+                <SummaryPill label="Tipo" value={parsed.type} />
+                <SummaryPill label="Canales" value={parsed.totalChannels} highlight />
               </div>
-            )}
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-              <SummaryItem label="Empresa" value={parsed.company || '-'} />
-              <SummaryItem label="País" value={parsed.country || '-'} />
-              <SummaryItem label="Plan" value={parsed.plan} />
-              <SummaryItem label="Tipo" value={parsed.type} />
-              <SummaryItem label="Canales" value={parsed.totalChannels} />
-              <div className="col-span-2 md:col-span-3 lg:col-span-6">
-                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Canales detectados</label>
+              <div>
+                <label className="block text-xs font-semibold text-mv-navy/40 uppercase tracking-wider mb-2">Canales detectados</label>
                 <div className="flex flex-wrap gap-2">
                   {uniqueChannels.map(ch => {
                     const count = parsed.channels.filter(c => c === ch).length
                     return (
-                      <span key={ch} className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                        {ch}{count > 1 ? ` ×${count}` : ''}
+                      <span key={ch} className="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium bg-mv-navy/5 text-mv-navy border border-mv-navy/10">
+                        {ch}{count > 1 && <span className="ml-1.5 text-mv-blue font-bold">×{count}</span>}
                       </span>
                     )
                   })}
                 </div>
               </div>
-            </div>
-          </Card>
+            </Card>
+          </div>
 
           {/* Estimates + Date */}
-          <Card icon={<TrendingUp size={20} />} title="Paso 4: Estimación y fecha de inicio" step={4}>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-              {ESTIMATE_OPTIONS.map(opt => (
-                <button
-                  key={opt.value}
-                  onClick={() => setEstimateType(opt.value)}
-                  className={`p-5 rounded-xl border-2 text-center transition-all ${
-                    estimateType === opt.value
-                      ? `${opt.bg} ${opt.border} ring-2 ring-offset-1 ${opt.border.replace('border', 'ring')}`
-                      : 'border-slate-200 hover:border-slate-300'
-                  }`}
-                >
-                  <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">{opt.label}</div>
-                  <div className={`text-4xl font-bold ${opt.color}`}>{estimations[opt.value]}</div>
-                  <div className="text-sm text-slate-500 mt-1">
-                    {Math.ceil(estimations[opt.value] / 7)} semanas
-                  </div>
-                </button>
-              ))}
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Fecha de inicio</label>
-              <input
-                type="date"
-                value={startDate}
-                onChange={e => setStartDate(e.target.value)}
-                className="w-full md:w-64 px-4 py-3 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-              />
-            </div>
-          </Card>
+          <div className="slide-up">
+            <Card icon={<TrendingUp size={18} />} title="Estimación y fecha de inicio" step={4}>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
+                {ESTIMATE_OPTIONS.map(opt => (
+                  <button
+                    key={opt.value}
+                    onClick={() => setEstimateType(opt.value)}
+                    className={`p-5 rounded-xl border-2 text-center transition-all duration-200 ${
+                      estimateType === opt.value
+                        ? `${opt.bg} ${opt.border} ring-2 ${opt.ring}`
+                        : 'border-slate-200 hover:border-slate-300'
+                    }`}
+                  >
+                    <div className="flex items-center justify-center gap-2 mb-2">
+                      <div className={`w-2 h-2 rounded-full ${opt.dot}`} />
+                      <span className="text-xs font-semibold text-mv-navy/40 uppercase tracking-wider">{opt.label}</span>
+                    </div>
+                    <div className={`text-4xl font-bold font-display ${opt.color}`}>{estimations[opt.value]}</div>
+                    <div className="text-xs text-mv-navy/40 mt-1">
+                      {Math.ceil(estimations[opt.value] / 7)} semanas · {opt.sublabel}
+                    </div>
+                  </button>
+                ))}
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-mv-navy/40 uppercase tracking-wider mb-2">Fecha de inicio</label>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={e => setStartDate(e.target.value)}
+                  className="w-full md:w-56 px-4 py-2.5 border border-mv-navy/15 rounded-lg text-sm text-mv-navy focus:ring-2 focus:ring-mv-blue/30 focus:border-mv-blue transition-all"
+                />
+              </div>
+            </Card>
+          </div>
 
           {/* Tasks */}
-          <Card icon={<CheckSquare size={20} />} title="Paso 5: Tareas generadas" step={5}>
-            <div className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white px-5 py-3 rounded-xl mb-4 text-center font-semibold">
-              Total: {tasks.length} tareas
-            </div>
-            <div className="overflow-x-auto rounded-xl border border-slate-200">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="bg-slate-50 border-b border-slate-200">
-                    <th className="px-4 py-3 text-left font-semibold text-slate-600 text-xs uppercase tracking-wider">Sección</th>
-                    <th className="px-4 py-3 text-left font-semibold text-slate-600 text-xs uppercase tracking-wider">Tarea</th>
-                    <th className="px-4 py-3 text-left font-semibold text-slate-600 text-xs uppercase tracking-wider">Fecha</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {tasks.map((t, i) => (
-                    <tr key={i} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
-                      <td className="px-4 py-3 font-medium text-blue-800 whitespace-nowrap">{t.section}</td>
-                      <td className="px-4 py-3 text-slate-700">{t.task}</td>
-                      <td className="px-4 py-3 text-slate-500 font-mono text-xs">{t.date}</td>
+          <div className="slide-up">
+            <Card icon={<CheckSquare size={18} />} title="Tareas generadas" step={5}>
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-mv-navy text-white text-sm font-semibold mb-4">
+                <CheckSquare size={14} />
+                {tasks.length} tareas
+              </div>
+              <div className="overflow-x-auto rounded-xl border border-mv-navy/10">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-mv-navy/3">
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-mv-navy/50 uppercase tracking-wider">Sección</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-mv-navy/50 uppercase tracking-wider">Tarea</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-mv-navy/50 uppercase tracking-wider">Fecha</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </Card>
+                  </thead>
+                  <tbody>
+                    {tasks.map((t, i) => (
+                      <tr key={i} className="border-t border-mv-navy/5 hover:bg-mv-blue/3 transition-colors">
+                        <td className="px-4 py-2.5 font-medium text-mv-navy whitespace-nowrap text-xs">{t.section}</td>
+                        <td className="px-4 py-2.5 text-mv-navy/70">{t.task}</td>
+                        <td className="px-4 py-2.5 text-mv-navy/40 font-mono text-xs">{t.date}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+          </div>
 
           {/* Send to Asana */}
-          <Card icon={<Send size={20} />} title="Paso 6: Enviar a Asana" step={6}>
-            <div className="space-y-5">
-              {/* Project info */}
-              <div className="bg-blue-50 border border-blue-200 rounded-xl p-5">
-                <div className="flex items-center justify-between mb-4">
+          <div className="slide-up">
+            <Card icon={<Send size={18} />} title="Enviar a Asana" step={6}>
+              <div className="bg-mv-navy/3 border border-mv-navy/10 rounded-xl p-6">
+                <div className="flex items-center justify-between mb-5">
                   <div>
-                    <p className="text-sm font-semibold text-blue-800">Proyecto seleccionado</p>
-                    <p className="text-sm text-blue-600">{selectedAsanaProject.name}</p>
+                    <p className="text-xs font-semibold text-mv-navy/40 uppercase tracking-wider mb-1">Proyecto destino</p>
+                    <p className="text-sm font-medium text-mv-navy">{selectedAsanaProject.name}</p>
                   </div>
                   <a
                     href={selectedAsanaProject.url || `https://app.asana.com/0/${selectedAsanaProject.gid}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-blue-500 hover:text-blue-700"
+                    className="text-mv-blue hover:text-mv-navy transition-colors"
                   >
                     <ExternalLink size={16} />
                   </a>
                 </div>
 
                 {sendResult ? (
-                  <div className={`rounded-xl p-4 border ${
+                  <div className={`rounded-xl p-5 border ${
                     sendResult.errors.length === 0
-                      ? 'bg-emerald-50 border-emerald-200'
-                      : 'bg-amber-50 border-amber-200'
+                      ? 'bg-mv-green/8 border-mv-green/20'
+                      : 'bg-mv-yellow/10 border-mv-yellow/30'
                   }`}>
                     <div className="flex items-center gap-3 mb-2">
                       {sendResult.errors.length === 0 ? (
-                        <CheckCircle size={20} className="text-emerald-600" />
+                        <CheckCircle size={20} className="text-mv-green" />
                       ) : (
-                        <AlertTriangle size={20} className="text-amber-600" />
+                        <AlertTriangle size={20} className="text-mv-orange" />
                       )}
-                      <p className={`font-semibold ${
-                        sendResult.errors.length === 0 ? 'text-emerald-800' : 'text-amber-800'
-                      }`}>
-                        {sendResult.created} tareas creadas exitosamente
-                        {sendResult.errors.length > 0 && ` | ${sendResult.errors.length} errores`}
+                      <p className="font-semibold text-mv-navy">
+                        {sendResult.created} tareas creadas
+                        {sendResult.errors.length > 0 && ` · ${sendResult.errors.length} errores`}
                       </p>
                     </div>
                     {sendResult.errors.length > 0 && (
                       <div className="mt-3 space-y-1">
                         {sendResult.errors.map((e, i) => (
-                          <p key={i} className="text-xs text-amber-700">{e.task}: {e.error}</p>
+                          <p key={i} className="text-xs text-mv-coral">{e.task}: {e.error}</p>
                         ))}
                       </div>
                     )}
@@ -400,64 +427,67 @@ export default function Parametrizador() {
                       href={selectedAsanaProject.url || `https://app.asana.com/0/${selectedAsanaProject.gid}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 mt-3 text-sm font-medium text-blue-700 hover:text-blue-900"
+                      className="inline-flex items-center gap-2 mt-4 text-sm font-medium text-mv-blue hover:text-mv-navy transition-colors"
                     >
                       <ExternalLink size={14} />
-                      Ver proyecto en Asana
+                      Abrir proyecto en Asana
                     </a>
                   </div>
                 ) : sendingToAsana ? (
-                  <div className="space-y-3">
+                  <div className="space-y-4">
                     <div className="flex items-center gap-3">
-                      <Loader2 size={18} className="animate-spin text-blue-600" />
-                      <span className="text-sm text-blue-700">{sendProgress.message}</span>
+                      <Loader2 size={18} className="animate-spin text-mv-blue" />
+                      <span className="text-sm text-mv-navy/70">{sendProgress.message}</span>
                     </div>
-                    <div className="w-full bg-blue-200 rounded-full h-2">
+                    <div className="w-full bg-mv-navy/10 rounded-full h-1.5">
                       <div
-                        className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                        className="bg-gradient-to-r from-mv-blue to-mv-green h-1.5 rounded-full transition-all duration-300"
                         style={{ width: sendProgress.total ? `${(sendProgress.current / sendProgress.total) * 100}%` : '0%' }}
                       />
                     </div>
-                    <p className="text-xs text-blue-500 text-right">
-                      {sendProgress.current} / {sendProgress.total}
-                    </p>
+                    <p className="text-xs text-mv-navy/30 text-right">{sendProgress.current} / {sendProgress.total}</p>
                   </div>
                 ) : (
                   <button
                     onClick={handleSendToAsana}
-                    className="w-full bg-gradient-to-r from-blue-600 to-indigo-700 text-white py-3.5 rounded-xl font-semibold text-base hover:shadow-lg hover:shadow-blue-200 transition-all active:scale-[0.99] flex items-center justify-center gap-2"
+                    className="w-full bg-mv-navy hover:bg-mv-navy-light text-white py-3.5 rounded-xl font-semibold text-sm transition-all duration-200 hover:shadow-lg hover:shadow-mv-navy/20 active:scale-[0.99] flex items-center justify-center gap-2"
                   >
-                    <Send size={18} />
+                    <Send size={16} />
                     Crear {tasks.length} tareas en Asana
                   </button>
                 )}
               </div>
-            </div>
-          </Card>
+            </Card>
+          </div>
 
-          {/* CSV fallback */}
-          <Card icon={<Download size={20} />} title="Exportar CSV (alternativa)" step={null}>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <button
-                onClick={handleCopyName}
-                className="flex items-center justify-center gap-2 px-6 py-3.5 border-2 border-blue-600 text-blue-700 rounded-xl font-semibold hover:bg-blue-50 transition-all"
-              >
-                {copied ? <CheckCircle size={18} /> : <Copy size={18} />}
-                {copied ? 'Copiado!' : 'Copiar nombre del proyecto'}
-              </button>
-              <button
-                onClick={handleDownloadCSV}
-                className="flex items-center justify-center gap-2 px-6 py-3.5 bg-gradient-to-r from-blue-600 to-indigo-700 text-white rounded-xl font-semibold hover:shadow-lg hover:shadow-blue-200 transition-all"
-              >
-                <Download size={18} />
-                Descargar CSV para Asana
-              </button>
+          {/* CSV fallback - compact */}
+          <div className="slide-up">
+            <div className="bg-white rounded-xl border border-mv-navy/8 p-4">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-mv-navy/30 font-medium uppercase tracking-wider">Exportar como alternativa</span>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleCopyName}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-mv-navy/50 hover:text-mv-navy border border-mv-navy/10 hover:border-mv-navy/20 rounded-lg transition-all"
+                  >
+                    {copied ? <CheckCircle size={12} /> : <Copy size={12} />}
+                    {copied ? 'Copiado' : 'Copiar nombre'}
+                  </button>
+                  <button
+                    onClick={handleDownloadCSV}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-mv-navy/50 hover:text-mv-navy border border-mv-navy/10 hover:border-mv-navy/20 rounded-lg transition-all"
+                  >
+                    <Download size={12} />
+                    CSV
+                  </button>
+                </div>
+              </div>
             </div>
-          </Card>
+          </div>
 
-          {/* Formula info */}
-          <div className="bg-slate-100 border border-slate-200 rounded-xl p-4 text-sm text-slate-600">
-            <strong>Fórmula:</strong> Starter: 59 + 5×canales | Pro: 56 + 12×canales | Advanced: 48 + 18×canales | Enterprise: 80 + 10×canales | Upgrade: 14 + 3×canales. Integraciones complejas: +16 días
+          {/* Formula */}
+          <div className="text-xs text-mv-navy/25 text-center py-2">
+            Starter: 59+5×ch | Pro: 56+12×ch | Advanced: 48+18×ch | Enterprise: 80+10×ch | Upgrade: 14+3×ch · Complejas: +16d
           </div>
         </>
       )}
@@ -467,26 +497,43 @@ export default function Parametrizador() {
 
 function Card({ icon, title, step, children }) {
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
-      <div className="flex items-center gap-2.5 mb-5">
+    <div className="bg-white rounded-2xl border border-mv-navy/8 shadow-sm shadow-mv-navy/3 p-6">
+      <div className="flex items-center gap-3 mb-5">
         {step && (
-          <div className="w-7 h-7 rounded-full bg-blue-700 text-white flex items-center justify-center text-xs font-bold shrink-0">
-            {step}
+          <div className="w-6 h-6 rounded-full bg-mv-navy flex items-center justify-center">
+            <span className="text-[10px] font-bold text-white">{step}</span>
           </div>
         )}
-        <div className="text-blue-700">{icon}</div>
-        <h2 className="text-lg font-semibold text-slate-800">{title}</h2>
+        <div className="text-mv-navy/40">{icon}</div>
+        <h2 className="text-sm font-semibold text-mv-navy uppercase tracking-wide">{title}</h2>
       </div>
       {children}
     </div>
   )
 }
 
-function SummaryItem({ label, value }) {
+function SummaryPill({ label, value, highlight }) {
   return (
-    <div className="bg-slate-50 rounded-xl p-4">
-      <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">{label}</label>
-      <div className="text-base font-bold text-blue-800">{value}</div>
+    <div className={`rounded-xl p-3.5 ${highlight ? 'bg-mv-navy text-white' : 'bg-mv-navy/4'}`}>
+      <label className={`block text-[10px] font-semibold uppercase tracking-wider mb-0.5 ${highlight ? 'text-white/50' : 'text-mv-navy/35'}`}>{label}</label>
+      <div className={`text-base font-bold ${highlight ? 'text-white' : 'text-mv-navy'}`}>{value}</div>
+    </div>
+  )
+}
+
+function StepDot({ active, label }) {
+  return (
+    <div className="flex flex-col items-center gap-1">
+      <div className={`w-3 h-3 rounded-full transition-all duration-300 ${active ? 'bg-mv-green scale-100' : 'bg-white/20 scale-90'}`} />
+      <span className={`text-[9px] font-medium tracking-wider uppercase transition-colors ${active ? 'text-mv-green' : 'text-white/25'}`}>{label}</span>
+    </div>
+  )
+}
+
+function StepLine({ active }) {
+  return (
+    <div className="flex-1 h-px mb-4">
+      <div className={`h-full transition-all duration-500 ${active ? 'bg-mv-green' : 'bg-white/15'}`} />
     </div>
   )
 }
