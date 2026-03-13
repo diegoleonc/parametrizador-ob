@@ -34,7 +34,7 @@ export default async function handler(req, res) {
 
     do {
       const url = new URL(`${ASANA_BASE}/portfolios/${portfolioGid}/items`);
-      url.searchParams.set('opt_fields', 'name,permalink_url,archived');
+      url.searchParams.set('opt_fields', 'name,permalink_url,archived,completed');
       url.searchParams.set('limit', '100');
       if (offset) url.searchParams.set('offset', offset);
 
@@ -48,8 +48,8 @@ export default async function handler(req, res) {
       offset = data.next_page?.offset || null;
     } while (offset);
 
-    // 2. Filter out archived/finished projects BEFORE checking tasks
-    const activeProjects = allProjects.filter((p) => !p.archived);
+    // 2. Filter out archived AND completed/finished projects BEFORE checking tasks
+    const activeProjects = allProjects.filter((p) => !p.archived && !p.completed);
 
     // 3. Check each active project for tasks (in parallel, batches of 10)
     const results = [];
