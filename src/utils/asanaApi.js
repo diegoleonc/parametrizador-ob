@@ -1,5 +1,14 @@
 // Asana API client — calls our Vercel serverless functions
 
+export async function fetchPortfolioProjects(type) {
+  const res = await fetch(`/api/asana/portfolio-projects?type=${encodeURIComponent(type)}`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Error obteniendo proyectos del portfolio');
+  }
+  return res.json();
+}
+
 export async function searchProjects(query) {
   const res = await fetch(`/api/asana/search?q=${encodeURIComponent(query)}`);
   if (!res.ok) {
