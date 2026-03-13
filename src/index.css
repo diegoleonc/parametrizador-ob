@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -6,9 +6,23 @@
 
 @layer base {
   body {
-    @apply bg-mv-bg text-mv-navy antialiased;
+    @apply bg-slate-50 text-slate-800 antialiased;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
+}
+
+/* Brand gradient - matches dashboard exactly */
+.brand-gradient {
+  background: linear-gradient(135deg, #2b4063, #3d5a87, #6681c6);
+}
+
+/* Card hover effect */
+.card-hover {
+  transition: all 0.2s ease;
+}
+.card-hover:hover {
+  box-shadow: 0 4px 20px rgba(43, 64, 99, 0.08);
+  transform: translateY(-1px);
 }
 
 /* Custom scrollbar */
@@ -19,10 +33,10 @@
   @apply bg-transparent;
 }
 ::-webkit-scrollbar-thumb {
-  @apply bg-mv-blue/30 rounded-full;
+  @apply bg-slate-300 rounded-full;
 }
 ::-webkit-scrollbar-thumb:hover {
-  @apply bg-mv-blue/50;
+  @apply bg-slate-400;
 }
 
 /* Smooth animations */
