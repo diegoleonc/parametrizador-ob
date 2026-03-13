@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
-import { Zap, ClipboardList, Target, TrendingUp, CheckSquare, Download, AlertTriangle, Copy, CheckCircle } from 'lucide-react'
+import { Zap, ClipboardList, Target, TrendingUp, CheckSquare, Download, AlertTriangle, Copy, CheckCircle, Search, Send, Loader2, ExternalLink, XCircle } from 'lucide-react'
 import { parseProjectName, calculateEstimation, generateTasks, formatDate, getNextMonday } from './utils/parsing'
+import { searchProjects, sendTasksToAsana } from './utils/asanaApi'
 
 const ESTIMATE_OPTIONS = [
   { value: 'optimista', label: 'Optimista (P50)', color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-200' },
@@ -17,6 +18,16 @@ export default function Parametrizador() {
   const [estimations, setEstimations] = useState(null)
   const [copied, setCopied] = useState(false)
 
+  // Asana integration state
+  const [asanaSearch, setAsanaSearch] = useState('')
+  const [asanaResults, setAsanaResults] = useState([])
+  const [asanaSearching, setAsanaSearching] = useState(false)
+  const [asanaSearchError, setAsanaSearchError] = useState('')
+  const [selectedProject, setSelectedProject] = useState(null)
+  const [sendingToAsana, setSendingToAsana] = useState(false)
+  const [sendProgress, setSendProgress] = useState({ current: 0, total: 0, message: '' })
+  const [sendResult, setSendResult] = useState(null)
+
   const tasks = useMemo(() => {
     if (!parsed || !estimations) return []
     return generateTasks(parsed, estimations[estimateType], startDate)
@@ -29,6 +40,16 @@ export default function Parametrizador() {
     setParsed(p)
     setEstimations(e)
     setShowResults(true)
+
+    // Pre-fill Asana search with company name
+    if (p.company) {
+      setAsanaSearch(p.company)
+    }
+
+    // Reset Asana state
+    setSelectedProject(null)
+    setSendResult(null)
+    setAsanaResults([])
   }
 
   const handleCopyName = async () => {
@@ -53,6 +74,46 @@ export default function Parametrizador() {
     link.href = URL.createObjectURL(blob)
     link.download = `tareas-onboarding-${formatDate(new Date())}.csv`
     link.click()
+  }
+
+  // Asana integration handlers
+  const handleAsanaSearch = async () => {
+    if (!asanaSearch.trim()) return
+    setAsanaSearching(true)
+    setAsanaSearchError('')
+    setAsanaResults([])
+    setSelectedProject(null)
+    try {
+      const projects = await searchProjects(asanaSearch)
+      setAsanaResults(projects)
+      if (projects.length === 0) {
+        setAsanaSearchError('No se encontraron proyectos con ese nombre')
+      }
+    } catch (err) {
+      setAsanaSearchError(err.message)
+    } finally {
+      setAsanaSearching(false)
+    }
+  }
+
+  const handleSendToAsana = async () => {
+    if (!selectedProject || tasks.length === 0) return
+    setSendingToAsana(true)
+    setSendResult(null)
+    setSendProgress({ current: 0, total: 0, message: 'Iniciando...' })
+
+    try {
+      const result = await sendTasksToAsana(
+        selectedProject.gid,
+        tasks,
+        (current, total, message) => setSendProgress({ current, total, message })
+      )
+      setSendResult(result)
+    } catch (err) {
+      setSendResult({ created: 0, errors: [{ task: 'General', error: err.message }] })
+    } finally {
+      setSendingToAsana(false)
+    }
   }
 
   const uniqueChannels = parsed ? [...new Set(parsed.channels)] : []
@@ -191,8 +252,158 @@ export default function Parametrizador() {
             </div>
           </Card>
 
-          {/* Step 5: Export */}
-          <Card icon={<Download size={20} />} title="Paso 5: Exportar">
+          {/* Step 5: Send to Asana */}
+          <Card icon={<Send size={20} />} title="Paso 5: Enviar a Asana">
+            <div className="space-y-5">
+              {/* Search */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Buscar proyecto en Asana</label>
+                <div className="flex gap-3">
+                  <input
+                    type="text"
+                    value={asanaSearch}
+                    onChange={e => setAsanaSearch(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') handleAsanaSearch() }}
+                    placeholder="Nombre del proyecto..."
+                    className="flex-1 px-4 py-3 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                  />
+                  <button
+                    onClick={handleAsanaSearch}
+                    disabled={asanaSearching || !asanaSearch.trim()}
+                    className="px-5 py-3 bg-slate-800 text-white rounded-xl font-medium text-sm hover:bg-slate-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                    {asanaSearching ? <Loader2 size={16} className="animate-spin" /> : <Search size={16} />}
+                    Buscar
+                  </button>
+                </div>
+              </div>
+
+              {/* Search error */}
+              {asanaSearchError && (
+                <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-center gap-3">
+                  <XCircle size={18} className="text-red-500 shrink-0" />
+                  <p className="text-sm text-red-700">{asanaSearchError}</p>
+                </div>
+              )}
+
+              {/* Search results */}
+              {asanaResults.length > 0 && (
+                <div>
+                  <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
+                    Seleccionar proyecto ({asanaResults.length} resultados)
+                  </label>
+                  <div className="space-y-2">
+                    {asanaResults.map(p => (
+                      <button
+                        key={p.gid}
+                        onClick={() => setSelectedProject(p)}
+                        className={`w-full text-left px-4 py-3 rounded-xl border-2 transition-all flex items-center justify-between ${
+                          selectedProject?.gid === p.gid
+                            ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-200'
+                            : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                        }`}
+                      >
+                        <span className="text-sm font-medium text-slate-700">{p.name}</span>
+                        {selectedProject?.gid === p.gid && (
+                          <CheckCircle size={18} className="text-blue-600 shrink-0" />
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Send button */}
+              {selectedProject && !sendResult && (
+                <div className="bg-blue-50 border border-blue-200 rounded-xl p-5">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <p className="text-sm font-semibold text-blue-800">Proyecto seleccionado</p>
+                      <p className="text-sm text-blue-600">{selectedProject.name}</p>
+                    </div>
+                    <a
+                      href={`https://app.asana.com/0/${selectedProject.gid}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-500 hover:text-blue-700"
+                    >
+                      <ExternalLink size={16} />
+                    </a>
+                  </div>
+
+                  {sendingToAsana ? (
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-3">
+                        <Loader2 size={18} className="animate-spin text-blue-600" />
+                        <span className="text-sm text-blue-700">{sendProgress.message}</span>
+                      </div>
+                      <div className="w-full bg-blue-200 rounded-full h-2">
+                        <div
+                          className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                          style={{ width: sendProgress.total ? `${(sendProgress.current / sendProgress.total) * 100}%` : '0%' }}
+                        />
+                      </div>
+                      <p className="text-xs text-blue-500 text-right">
+                        {sendProgress.current} / {sendProgress.total}
+                      </p>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={handleSendToAsana}
+                      className="w-full bg-gradient-to-r from-blue-600 to-indigo-700 text-white py-3.5 rounded-xl font-semibold text-base hover:shadow-lg hover:shadow-blue-200 transition-all active:scale-[0.99] flex items-center justify-center gap-2"
+                    >
+                      <Send size={18} />
+                      Crear {tasks.length} tareas en Asana
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {/* Send result */}
+              {sendResult && (
+                <div className={`rounded-xl p-5 border ${
+                  sendResult.errors.length === 0
+                    ? 'bg-emerald-50 border-emerald-200'
+                    : 'bg-amber-50 border-amber-200'
+                }`}>
+                  <div className="flex items-center gap-3 mb-2">
+                    {sendResult.errors.length === 0 ? (
+                      <CheckCircle size={20} className="text-emerald-600" />
+                    ) : (
+                      <AlertTriangle size={20} className="text-amber-600" />
+                    )}
+                    <p className={`font-semibold ${
+                      sendResult.errors.length === 0 ? 'text-emerald-800' : 'text-amber-800'
+                    }`}>
+                      {sendResult.created} tareas creadas exitosamente
+                      {sendResult.errors.length > 0 && ` | ${sendResult.errors.length} errores`}
+                    </p>
+                  </div>
+                  {sendResult.errors.length > 0 && (
+                    <div className="mt-3 space-y-1">
+                      {sendResult.errors.map((e, i) => (
+                        <p key={i} className="text-xs text-amber-700">
+                          {e.task}: {e.error}
+                        </p>
+                      ))}
+                    </div>
+                  )}
+                  <a
+                    href={`https://app.asana.com/0/${selectedProject.gid}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 mt-3 text-sm font-medium text-blue-700 hover:text-blue-900"
+                  >
+                    <ExternalLink size={14} />
+                    Ver proyecto en Asana
+                  </a>
+                </div>
+              )}
+            </div>
+          </Card>
+
+          {/* Step 6: CSV Export (fallback) */}
+          <Card icon={<Download size={20} />} title="Paso 6: Exportar CSV (alternativa)">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <button
                 onClick={handleCopyName}
